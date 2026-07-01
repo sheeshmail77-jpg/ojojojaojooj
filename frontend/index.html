@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AuthSystem</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    body { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100vh; }
+    .hero { text-align:center; max-width:560px; padding:2rem; }
+    .logo { font-size:3rem; font-weight:900; letter-spacing:-2px;
+            background:linear-gradient(135deg,#a78bfa,#60a5fa); -webkit-background-clip:text;
+            -webkit-text-fill-color:transparent; margin-bottom:.4rem; }
+    .tagline { color:#94a3b8; font-size:1.1rem; margin-bottom:2.5rem; }
+    .btn-group { display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; }
+    .btn { padding:.75rem 2rem; border-radius:10px; font-weight:700; font-size:.95rem;
+           cursor:pointer; text-decoration:none; transition:.2s; }
+    .btn-primary { background:linear-gradient(135deg,#7c3aed,#2563eb); color:#fff; border:none; }
+    .btn-primary:hover { opacity:.85; transform:translateY(-2px); }
+    .btn-outline { background:transparent; color:#a78bfa; border:2px solid #a78bfa; }
+    .btn-outline:hover { background:#a78bfa22; transform:translateY(-2px); }
+    .pills { display:flex; gap:.75rem; justify-content:center; margin-top:2.5rem; flex-wrap:wrap; }
+    .pill { background:#1e293b; border:1px solid #334155; border-radius:999px;
+            padding:.35rem 1rem; font-size:.8rem; color:#94a3b8; }
+    .pill span { color:#a78bfa; margin-right:.35rem; }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <div class="logo">🔐 AuthSystem</div>
+    <p class="tagline">Secure key-based script authentication with HWID locking,<br/>whitelist management &amp; encrypted delivery.</p>
+    <div class="btn-group">
+      <a href="login.html" class="btn btn-primary">Owner Dashboard</a>
+      <a href="https://discord.gg/your-invite" target="_blank" class="btn btn-outline">Discord Server</a>
+    </div>
+    <div class="pills">
+      <div class="pill"><span>✓</span>AES-256 Encrypted</div>
+      <div class="pill"><span>✓</span>HWID Locked</div>
+      <div class="pill"><span>✓</span>Discord Bot</div>
+      <div class="pill"><span>✓</span>Rate Limited</div>
+    </div>
+  </div>
+</body>
+</html>
