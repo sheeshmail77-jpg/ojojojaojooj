@@ -31,3 +31,5 @@ router.post("/reset-self", (req, res) => {
   stmt.addLog.run(user.id, "HWID_RESET_SELF", null, req.ip);
   res.json({ message: "HWID cleared — next launch will bind a new device" });
 });
+
+module.exports = router;
