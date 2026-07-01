@@ -70,8 +70,8 @@ app.get("*", (req, res) => {
 });
 
 // ── Start ─────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4040;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`\n🔐  AuthSystem running → http://localhost:${PORT}`);
-  console.log(`    Dashboard → http://localhost:${PORT}/dashboard.html`);
+  console.log(`\n🔐  AuthSystem running → http://0.0.0.0:${PORT}`);
+  console.log(`    Dashboard → http://0.0.0.0:${PORT}/dashboard.html`);
 });
