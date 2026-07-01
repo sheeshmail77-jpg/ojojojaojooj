@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard — AuthSystem</title>
+  <link rel="stylesheet" href="css/global.css" />
+  <style>
+    /* ── Layout ──────────────────────────────────────────── */
+    body { display:flex; min-height:100vh; overflow-x:hidden; }
+
+    /* Sidebar */
+    .sidebar {
+      width:220px; min-height:100vh; background:var(--surface);
+      border-right:1px solid var(--border); padding:1.5rem 1rem;
+      display:flex; flex-direction:column; gap:.35rem; flex-shrink:0;
+      position:sticky; top:0; height:100vh; overflow-y:auto;
+    }
+    .sidebar .brand {
+      font-size:1.1rem; font-weight:900; letter-spacing:-0.5px;
+      background:linear-gradient(135deg,#a78bfa,#60a5fa);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      margin-bottom:1.25rem; padding:.25rem .5rem;
+    }
+    .nav-item {
+      display:flex; align-items:center; gap:.65rem; padding:.6rem .75rem;
+      border-radius:8px; color:var(--muted); font-size:.875rem; font-weight:500;
+      cursor:pointer; transition:.15s; border:none; background:none; width:100%;
+    }
+    .nav-item:hover { background:#1a2540; color:var(--text); }
+    .nav-item.active { background:#1e1040; color:#a78bfa; }
+    .sidebar-footer { margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); }
+    .owner-chip { font-size:.78rem; color:var(--muted); padding:.4rem .5rem; }
+    .owner-chip span { color:#a78bfa; font-weight:600; }
+
+    /* Main content */
+    .main { flex:1; padding:2rem; overflow-y:auto; }
+    .page { display:none; }
+    .page.active { display:block; }
+
+    /* Stats row */
+    .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin-bottom:2rem; }
+    .stat-card { padding:1.25rem 1.5rem; }
+    .stat-label { font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.07em; }
+    .stat-val { font-size:2rem; font-weight:800; margin-top:.25rem; }
+    .stat-val.purple { color:#a78bfa; }
+    .stat-val.blue   { color:#60a5fa; }
+    .stat-val.green  { color:#10b981; }
+
+    /* Section header */
+    .sec-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem; }
+    .sec-header h2 { font-size:1rem; font-weight:700; }
+
+    /* Search */
+    .search-bar { position:relative; }
+    .search-bar input { padding-left:2rem; }
+    .search-bar::before { content:"🔍"; position:absolute; left:.65rem; top:50%; transform:translateY(-50%);
+                          font-size:.75rem; pointer-events:none; }
+
+    /* Table wrapper */
+    .table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--border); }
+
+    /* Script textarea */
+    .script-textarea { font-family:monospace; font-size:.8rem; height:220px; resize:vertical; }
+
+    /* Log line */
+    .log-line { font-family:monospace; font-size:.78rem; padding:.45rem .6rem;
+                border-bottom:1px solid #0d1a2e; display:flex; gap:1rem; align-items:center; }
+    .log-ts { color:var(--muted); white-space:nowrap; }
+    .log-action { color:#60a5fa; font-weight:600; min-width:140px; }
+    .log-user { color:#a78bfa; }
+
+    /* Upload form */
+    .upload-form { display:grid; gap:1rem; max-width:640px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:1rem; }
+    .form-label { font-size:.78rem; color:var(--muted); display:block; margin-bottom:.35rem;
+                  text-transform:uppercase; letter-spacing:.05em; }
+
+    /* Script list row */
+    .script-active-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+    .dot-on  { background:var(--success); box-shadow:0 0 6px var(--success); }
+    .dot-off { background:var(--muted); }
+  </style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="brand">🔐 AuthSystem</div>
+
+  <button class="nav-item active" data-page="overview">📊 Overview</button>
+  <button class="nav-item" data-page="whitelist">👥 Whitelist</button>
+  <button class="nav-item" data-page="scripts">📜 Scripts</button>
+  <button class="nav-item" data-page="logs">📋 Logs</button>
+
+  <div class="sidebar-footer">
+    <div class="owner-chip">Logged in as <span id="ownerName">—</span></div>
+    <button class="nav-item" id="logoutBtn" style="color:var(--danger);margin-top:.25rem;">🚪 Logout</button>
+  </div>
+</nav>
+
+<!-- ── Main ─────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Overview -->
+  <div class="page active" id="page-overview">
+    <h1 style="font-size:1.4rem;font-weight:800;margin-bottom:1.5rem;">Dashboard</h1>
+    <div class="stats">
+      <div class="card stat-card">
+        <div class="stat-label">Whitelisted Users</div>
+        <div class="stat-val purple" id="stat-users">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Active Scripts</div>
+        <div class="stat-val blue" id="stat-scripts">—</div>
+      </div>
+      <div class="card stat-card">
+        <div class="stat-label">Actions (24h)</div>
+        <div class="stat-val green" id="stat-logs">—</div>
+      </div>
+    </div>
+    <div class="card" style="max-width:520px;">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:1rem;">Quick Actions</div>
+      <div style="display:flex;flex-wrap:wrap;gap:.75rem;">
+        <button class="btn btn-primary btn-sm" onclick="nav('whitelist')">+ Add User</button>
+        <button class="btn btn-primary btn-sm" onclick="nav('scripts')">⬆ Upload Script</button>
+        <button class="btn btn-ghost btn-sm" onclick="nav('logs')">View Logs</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Whitelist -->
+  <div class="page" id="page-whitelist">
+    <div class="sec-header">
+      <h2>👥 Whitelist Management</h2>
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">+ Add User</button>
+    </div>
+    <div style="margin-bottom:1rem;max-width:320px;" class="search-bar">
+      <input id="wlSearch" type="text" placeholder="Search by username / Discord ID…" oninput="filterUsers()" />
+    </div>
+    <div class="table-wrap card" style="padding:0;">
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th><th>Discord ID</th><th>Key</th>
+            <th>HWID</th><th>Role</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="wlBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <div class="page" id="page-scripts">
+    <div class="sec-header">
+      <h2>📜 Script Manager</h2>
+    </div>
+
+    <!-- Upload form -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:1rem;">Upload / Update Script</div>
+      <div class="upload-form">
+        <div class="form-row">
+          <div>
+            <label class="form-label">Script Name</label>
+            <input id="sName" type="text" placeholder="main" />
+          </div>
+          <div>
+            <label class="form-label">Version</label>
+            <input id="sVer" type="text" placeholder="1.0.0" />
+          </div>
+        </div>
+        <div>
+          <label class="form-label">Source Code (Lua)</label>
+          <textarea id="sSource" class="script-textarea" placeholder="-- paste your script source here&#10;print('hello world')"></textarea>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="uploadScript()">⬆ Encrypt &amp; Upload</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Script list -->
+    <div class="table-wrap card" style="padding:0;">
+      <table>
+        <thead><tr><th></th><th>Name</th><th>Version</th><th>Created</th><th>Updated</th><th>Actions</th></tr></thead>
+        <tbody id="scriptBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="page" id="page-logs">
+    <div class="sec-header">
+      <h2>📋 Activity Logs</h2>
+      <button class="btn btn-ghost btn-sm" onclick="loadLogs()">↻ Refresh</button>
+    </div>
+    <div class="card" style="padding:0;max-height:600px;overflow-y:auto;">
+      <div id="logBody"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── Add User Modal ────────────────────────────────────── -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <h3>Add Whitelisted User</h3>
+    <div class="form-group">
+      <label>Discord ID</label>
+      <input id="mDiscordId" type="text" placeholder="123456789012345678" />
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input id="mUsername" type="text" placeholder="cooluser123" />
+    </div>
+    <div class="form-group">
+      <label>Role</label>
+      <select id="mRole">
+        <option value="user">user</option>
+        <option value="vip">vip</option>
+        <option value="admin">admin</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeAddModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="addUser()">Add User</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+// ── Auth guard ───────────────────────────────────────────
+const TOKEN = sessionStorage.getItem("auth_token");
+if (!TOKEN) window.location.href = "login.html";
+document.getElementById("ownerName").textContent = sessionStorage.getItem("auth_user") || "owner";
+
+const API = (path, opt = {}) => fetch(path, {
+  ...opt,
+  headers: { "Content-Type":"application/json", "Authorization":`Bearer ${TOKEN}`, ...(opt.headers||{}) },
+  body: opt.body ? JSON.stringify(opt.body) : undefined,
+}).then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error||"Error"); return d; });
+
+// ── Toast ────────────────────────────────────────────────
+function toast(msg, type="ok") {
+  const el = document.createElement("div");
+  el.className = `toast-item toast-${type}`; el.textContent = msg;
+  document.getElementById("toast").appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ── Navigation ───────────────────────────────────────────
+function nav(page) {
+  document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById(`page-${page}`).classList.add("active");
+  document.querySelector(`[data-page="${page}"]`)?.classList.add("active");
+  if (page === "overview")   loadStats();
+  if (page === "whitelist")  loadUsers();
+  if (page === "scripts")    loadScripts();
+  if (page === "logs")       loadLogs();
+}
+
+document.querySelectorAll(".nav-item[data-page]").forEach(btn => {
+  btn.addEventListener("click", () => nav(btn.dataset.page));
+});
+
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  sessionStorage.clear(); window.location.href = "login.html";
+});
+
+// ── Stats ────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await API("/api/owner/stats");
+    document.getElementById("stat-users").textContent   = d.whitelisted_users;
+    document.getElementById("stat-scripts").textContent = d.active_scripts;
+    document.getElementById("stat-logs").textContent    = d.actions_24h;
+  } catch {}
+}
+
+// ── Whitelist ────────────────────────────────────────────
+let allUsers = [];
+async function loadUsers() {
+  try {
+    allUsers = await API("/api/whitelist");
+    renderUsers(allUsers);
+  } catch (e) { toast(e.message,"err"); }
+}
+
+function renderUsers(users) {
+  const tbody = document.getElementById("wlBody");
+  tbody.innerHTML = users.map(u => `
+    <tr>
+      <td>${u.username}</td>
+      <td style="font-size:.75rem;color:var(--muted);">${u.discord_id||"—"}</td>
+      <td><code style="font-size:.72rem;background:#0a1628;padding:.15rem .4rem;border-radius:4px;">${u.key}</code></td>
+      <td>${u.hwid ? `<span class="badge badge-green">Bound</span>` : `<span class="badge badge-red">None</span>`}</td>
+      <td><span class="badge badge-purple">${u.role}</span></td>
+      <td>${u.whitelisted ? `<span class="badge badge-green">Active</span>` : `<span class="badge badge-red">Disabled</span>`}</td>
+      <td>
+        <div style="display:flex;gap:.4rem;">
+          <button class="btn btn-ghost btn-sm" onclick="resetHwid('${u.discord_id}')">Reset HWID</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleUser('${u.discord_id}',${u.whitelisted?0:1})">${u.whitelisted?"Disable":"Enable"}</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser('${u.discord_id}','${u.username}')">✕</button>
+        </div>
+      </td>
+    </tr>`).join("");
+}
+
+function filterUsers() {
+  const q = document.getElementById("wlSearch").value.toLowerCase();
+  renderUsers(allUsers.filter(u => u.username.toLowerCase().includes(q) || (u.discord_id||"").includes(q)));
+}
+
+async function resetHwid(did) {
+  if (!confirm("Reset HWID for this user?")) return;
+  try {
+    await API("/api/hwid/reset-owner", { method:"POST", body:{ discord_id:did } });
+    toast("HWID reset"); loadUsers();
+  } catch(e) { toast(e.message,"err"); }
+}
+
+async function toggleUser(did, val) {
+  try {
+    await API("/api/whitelist/toggle", { method:"PATCH", body:{ discord_id:did, whitelisted:val } });
+    toast(val ? "User enabled" : "User disabled"); loadUsers();
+  } catch(e) { toast(e.message,"err"); }
+}
+
+async function deleteUser(did, name) {
+  if (!confirm(`Delete ${name}? This is permanent.`)) return;
+  try {
+    await API("/api/whitelist/delete", { method:"DELETE", body:{ discord_id:did } });
+    toast("User deleted","err"); loadUsers();
+  } catch(e) { toast(e.message,"err"); }
+}
+
+// Add modal
+function openAddModal()  { document.getElementById("addModal").classList.add("open"); }
+function closeAddModal() { document.getElementById("addModal").classList.remove("open"); }
+
+async function addUser() {
+  const discord_id = document.getElementById("mDiscordId").value.trim();
+  const username   = document.getElementById("mUsername").value.trim();
+  const role       = document.getElementById("mRole").value;
+  if (!discord_id || !username) { toast("Fill all fields","err"); return; }
+  try {
+    const d = await API("/api/whitelist/add", { method:"POST", body:{ discord_id, username, role } });
+    toast(`Added ${username} — key: ${d.user.key}`,"ok");
+    closeAddModal(); loadUsers();
+  } catch(e) { toast(e.message,"err"); }
+}
+
+// Close modal on overlay click
+document.getElementById("addModal").addEventListener("click", e => {
+  if (e.target === e.currentTarget) closeAddModal();
+});
+
+// ── Scripts ──────────────────────────────────────────────
+async function loadScripts() {
+  try {
+    const list = await API("/api/script/list");
+    document.getElementById("scriptBody").innerHTML = list.map(s => `
+      <tr>
+        <td><span class="script-active-dot ${s.active ? "dot-on":"dot-off"}"></span></td>
+        <td style="font-weight:600;">${s.name}</td>
+        <td><span class="badge badge-purple">v${s.version}</span></td>
+        <td style="color:var(--muted);font-size:.78rem;">${new Date(s.created_at*1000).toLocaleDateString()}</td>
+        <td style="color:var(--muted);font-size:.78rem;">${new Date(s.updated_at*1000).toLocaleDateString()}</td>
+        <td><button class="btn btn-ghost btn-sm" onclick="toggleScript(${s.id},${s.active?0:1})">${s.active?"Deactivate":"Activate"}</button></td>
+      </tr>`).join("");
+  } catch(e) { toast(e.message,"err"); }
+}
+
+async function uploadScript() {
+  const name    = document.getElementById("sName").value.trim();
+  const version = document.getElementById("sVer").value.trim() || "1.0.0";
+  const source  = document.getElementById("sSource").value;
+  if (!name || !source) { toast("Name and source required","err"); return; }
+  try {
+    await API("/api/script/upload", { method:"POST", body:{ name, version, source } });
+    toast(`Script '${name}' uploaded & encrypted`);
+    loadScripts();
+    document.getElementById("sSource").value = "";
+  } catch(e) { toast(e.message,"err"); }
+}
+
+async function toggleScript(id, val) {
+  try {
+    await API("/api/script/active", { method:"PATCH", body:{ id, active:val } });
+    toast(val ? "Script activated" : "Script deactivated"); loadScripts();
+  } catch(e) { toast(e.message,"err"); }
+}
+
+// ── Logs ─────────────────────────────────────────────────
+async function loadLogs() {
+  try {
+    const logs = await API("/api/logs");
+    document.getElementById("logBody").innerHTML = logs.map(l => `
+      <div class="log-line">
+        <span class="log-ts">${new Date(l.ts*1000).toLocaleString()}</span>
+        <span class="log-action">${l.action}</span>
+        <span class="log-user">${l.username||l.user_id||"?"}</span>
+        <span style="color:var(--muted);font-size:.75rem;">${l.detail||""}</span>
+        <span style="color:var(--muted);font-size:.72rem;margin-left:auto;">${l.ip||""}</span>
+      </div>`).join("") || `<div style="padding:1.5rem;color:var(--muted);text-align:center;">No logs yet</div>`;
+  } catch(e) { toast(e.message,"err"); }
+}
+
+// ── Init ─────────────────────────────────────────────────
+loadStats();
+</script>
+</body>
+</html>
