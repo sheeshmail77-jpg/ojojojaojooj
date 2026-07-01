@@ -16,6 +16,7 @@ require("./db");
 const app = express();
 
 // ── Middleware ────────────────────────────────────────────
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));   // scripts can be large
 app.use(express.urlencoded({ extended: true }));
