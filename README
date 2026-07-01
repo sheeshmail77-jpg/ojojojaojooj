@@ -1,0 +1,176 @@
+# 🔐 AuthSystem — Secure Script Authentication
+
+Full-stack key authentication system:  
+**Node.js backend** · **Owner web dashboard** · **Discord bot** · **Roblox in-game panel**
+
+---
+
+## Architecture
+
+```
+auth-system/
+├── backend/          Node.js + Express API (SQLite)
+│   ├── server.js
+│   ├── db.js         Schema + query helpers
+│   ├── crypto.js     AES-256-CBC encrypt/decrypt + script wrapper
+│   ├── middleware/
+│   │   └── ownerAuth.js   JWT guard
+│   └── routes/
+│       ├── auth.js        Owner login
+│       ├── whitelist.js   User CRUD
+│       ├── hwid.js        HWID reset
+│       └── script.js      Upload + secure delivery
+├── frontend/         Owner dashboard (served by Express)
+│   ├── index.html    Landing page
+│   ├── login.html    Owner login
+│   ├── dashboard.html  Full panel (users · scripts · logs)
+│   ├── panel.lua     Served at /panel.lua for Roblox to HttpGet
+│   └── css/global.css
+├── bot/
+│   └── index.js      discord.js v14 slash commands
+├── roblox/
+│   └── panel.lua     The in-game GUI script
+├── .env.example
+└── package.json
+```
+
+---
+
+## Quick Start
+
+### 1 — Install dependencies
+
+```bash
+cd auth-system
+npm install
+```
+
+### 2 — Configure environment
+
+```bash
+copy .env.example .env
+```
+
+Open `.env` and fill in:
+
+| Variable | What to put |
+|---|---|
+| `OWNER_USERNAME` | Your dashboard login username |
+| `OWNER_PASSWORD` | Your dashboard login password |
+| `JWT_SECRET` | Any 64-char random string (run `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`) |
+| `SCRIPT_AES_KEY` | 32-char string (run `node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"`) |
+| `PORT` | `3000` or your preferred port |
+| `BASE_URL` | Your public URL, e.g. `https://auth.yoursite.com` |
+| `DISCORD_TOKEN` | Your bot token from discord.com/developers |
+| `DISCORD_GUILD_ID` | Right-click your server → Copy Server ID |
+| `DISCORD_CLIENT_ID` | Your bot's client/application ID |
+| `DISCORD_OWNER_ROLE_ID` | Role allowed to run owner commands |
+| `DISCORD_MEMBER_ROLE_ID` | Role assigned to whitelisted users (optional) |
+
+### 3 — Copy panel.lua to the frontend folder
+
+```bash
+copy roblox\panel.lua frontend\panel.lua
+```
+
+Then edit the `API_BASE` line in **both** files to your domain:
+```lua
+local API_BASE = "https://auth.yoursite.com"
+```
+
+### 4 — Start the server
+
+```bash
+npm start
+```
+
+Visit `http://localhost:3000` → **Owner Dashboard** → `http://localhost:3000/login.html`
+
+### 5 — Start the Discord bot (separate terminal)
+
+```bash
+npm run bot
+```
+
+---
+
+## Discord Bot Commands
+
+| Command | Permission | Description |
+|---|---|---|
+| `/whitelist-add @user [role]` | Admin | Add user + auto-generate key, DM them |
+| `/whitelist-remove @user` | Admin | Delete user permanently |
+| `/whitelist-toggle @user true/false` | Admin | Enable / disable access |
+| `/whitelist-list` | Admin | Show all active users |
+| `/reset-hwid @user` | Admin | Clear their HWID lock |
+| `/mykey` | Anyone | DMs you your own key |
+| `/setup @user` | Admin | DMs user the panel loadstring |
+
+---
+
+## How Script Delivery Works (Security Model)
+
+```
+Owner uploads source code
+       │
+       ▼  AES-256-CBC encrypt (server-side key)
+   Stored in SQLite (encrypted blob)
+       │
+       ▼  User runs panel → enters key
+   Panel sends: key + HWID → POST /api/script/fetch
+       │
+       ▼  Server:
+       │   1. Validates key exists + whitelisted
+       │   2. Checks/binds HWID
+       │   3. Decrypts source in memory
+       │   4. Wraps in base64 + loadstring
+       │   5. Returns wrapped script
+       │
+       ▼  Source never stored in plain text
+          Source never transmitted in plain text
+          Each delivery uses a fresh delivery token
+```
+
+**The raw Lua source is never accessible to anyone except you (the owner).** Users only ever receive an encrypted, base64-wrapped loadstring that executes in-memory.
+
+---
+
+## Roblox Panel
+
+In your executor, run:
+
+```lua
+loadstring(game:HttpGet("https://auth.yoursite.com/panel.lua"))()
+```
+
+The panel opens with 4 buttons:
+
+| Button | Action |
+|---|---|
+| **🎭 Get Role** | Confirms your whitelisted role |
+| **📜 Get Script** | Downloads + executes the script (key verified first) |
+| **🔄 Reset HWID** | Clears your device lock (next launch binds new device) |
+| **🔑 My Key** | Copies your key to clipboard |
+
+---
+
+## Deploying to a Server
+
+**Recommended: Railway / Render / VPS**
+
+1. Push the project to a private GitHub repo (never commit `.env`)
+2. Set all environment variables in the platform's dashboard
+3. Set start command: `node backend/server.js`
+4. Update `BASE_URL` and `API_BASE` in `panel.lua` + `frontend/panel.lua`
+
+**HTTPS is strongly recommended** so keys aren't transmitted in plain text.
+
+---
+
+## Security Notes
+
+- `.env` and `data/` are gitignored — never commit them
+- The `SCRIPT_AES_KEY` decrypts all scripts — keep it secret
+- Rate limiting is applied to all API endpoints
+- HWID binding prevents key sharing between users
+- JWT tokens expire after 12 hours
